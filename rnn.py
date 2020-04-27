@@ -1,7 +1,3 @@
-####################################################
-## Ws and bs as OrderedDictionaries to avoid #######
-## hand-ordering ###################################
-####################################################
 import pandas as pd
 import numpy as np
 import random
