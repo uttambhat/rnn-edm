@@ -12,7 +12,7 @@ class rnn:
         self.n_restarts_optimizer=n_restarts_optimizer
         self.epsilon=epsilon
     
-    def fit(self,X_train,y_train,hidden_units_1=2,hidden_units_2=None):
+    def initialize(self,X_train,y_train,hidden_units_1=2,hidden_units_2=None):
         self.X=np.transpose(X_train, (2,1,0))
         self.y=np.transpose(y_train, (1,0))
 
