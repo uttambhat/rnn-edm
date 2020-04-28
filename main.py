@@ -9,7 +9,7 @@ import rnn as rnn
 import time_series_to_ml_edm as data_prep
 
 ########## Get data ################
-time_series_data = np.loadtxt("../python_time_series_generators/time_series_data/time_series_02.txt")
+time_series_data = np.loadtxt("time_series.txt")
 
 ########## Normalize time-series values #############
 mean = np.mean(time_series_data)
@@ -27,7 +27,7 @@ X_train,y_train,X_test,y_test = data_prep.prepare(time_series_data_normalized,X_
 
 ########### Model RNN using rnn class ###############
 rnn1 = rnn.rnn()
-rnn1.initialize(X_train, y_train,hidden_units_1=3,hidden_units_2=3) ### NOTE! INTERNAL REPRESENTATION TRANSPOSES X AND Y -->  rnn1.X=np.transpose(X_train, (2,1,0)); rnn1.y=np.transpose(y_train, (1,0)). All functions except rnn1.predict assumes internal order
+rnn1.initialize(X_train, y_train,hidden_units_1=3,hidden_units_2=3)
 rnn1.get_parameters()
 
 initial_theta=np.asarray(list(rnn1.parameters.values()))
