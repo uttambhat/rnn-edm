@@ -11,3 +11,4 @@ Fits a Recurrent Neural Network on delay-coordinate vectors from the input time-
 5. Specify the fraction of data to be used as test data (line 24)
 6. Specify the number hidden neurons. There are two possible RNN architectures. To fit a single 'hidden function' RNN, use None for hidden_units_2. Specifying integers for both fits a double 'hidden function' RNN with different weights & biases for F and G (refer paper)
 7. Specify the train-validation split (i.e., fraction of X_train to be used for training) and the number of epochs
+8. Run main.py
