@@ -6,7 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import sklearn.metrics as metrics
 
 import rnn as rnn
-import time_series_to_ml_edm as data_prep
+import lib.time_series_to_ml_edm as data_prep
 
 ########## Get data ################
 time_series_data = np.loadtxt("time_series.txt")
