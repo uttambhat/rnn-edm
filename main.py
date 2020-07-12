@@ -9,29 +9,29 @@ import rnn as rnn
 import lib.time_series_to_ml_edm as data_prep
 
 ########## Get data ################
-time_series_data = np.loadtxt("time_series.txt")
+time_series_data = np.loadtxt("../python_time_series_generators/time_series_data/timeseries_4_species_Ricker_noise_0p01_1_chaotic.txt")
 
 ########## Normalize time-series values #############
 mean = np.mean(time_series_data)
 stdev = np.sqrt(np.var(time_series_data))
-time_series_data_normalized = (time_series_data-mean)/stdev
+time_series_data_normalized = ((time_series_data-mean)/stdev)[:1000]
 
 ################## Data preparation ############################
 
 X_column_list = [0]
 y_column_list = [0]
-number_of_delays = 2
+number_of_delays = 8
 test_fraction = 0.5
 
 X_train,y_train,X_test,y_test = data_prep.prepare(time_series_data_normalized,X_column_list,y_column_list,number_of_delays,test_fraction)
 
 ########### Model RNN using rnn class ###############
 rnn1 = rnn.rnn()
-rnn1.initialize(X_train, y_train,hidden_units_1=3,hidden_units_2=3)
+rnn1.initialize(X_train, y_train,hidden_units_1=3,hidden_units_2=3,activation_1='tanh',activation_2='tanh')
 rnn1.get_parameters()
 
 initial_theta=np.asarray(list(rnn1.parameters.values()))
-(loss_vector,loss_val_vector)=rnn1.train(rnn1.X,rnn1.y,initial_theta,train_validation_split=0.7,epochs=10000)
+(loss_vector,loss_val_vector)=rnn1.train(rnn1.X,rnn1.y,initial_theta,train_validation_split=0.7,epochs=10000,restore_best_theta=True)
 
 y_pred=rnn1.predict(X_test)
 rnn1.print_dashed_line()

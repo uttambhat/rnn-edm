@@ -12,7 +12,7 @@ class rnn:
         self.n_restarts_optimizer=n_restarts_optimizer
         self.epsilon=epsilon
     
-    def initialize(self,X_train,y_train,hidden_units_1=2,hidden_units_2=None):
+    def initialize(self,X_train,y_train,hidden_units_1=2,hidden_units_2=None,activation_1='tanh',activation_2='tanh'):
         self.X=np.transpose(X_train, (2,1,0))
         self.y=np.transpose(y_train, (1,0))
 
@@ -23,11 +23,34 @@ class rnn:
         self.batch_size = self.X.shape[2]
         if(hidden_units_2==None):
             self.h_size = hidden_units_1
+            if(activation_1=='tanh'):
+                self.activation_h = lambda x: np.tanh(x)
+                self.dactivation_h = lambda y: (1.-y*y)
+            elif(activation_1=='relu'):
+                self.activation_h = lambda x: x*(x>0.)
+                self.dactivation_h = lambda y: np.sign(y)
+            else:
+                print("Activation function not defined")
         else:
             self.f_size = hidden_units_1
             self.g_size = hidden_units_2
-            
-
+            if(activation_1=='tanh'):
+                self.activation_f = lambda x: np.tanh(x)
+                self.dactivation_f = lambda y: (1.-y*y)
+            elif(activation_1=='relu'):
+                self.activation_h = lambda x: x*(x>0.)
+                self.dactivation_h = lambda y: np.sign(y)
+            else:
+                print("Activation function not defined")
+            if(activation_2=='tanh'):
+                self.activation_g = lambda x: np.tanh(x)
+                self.dactivation_g = lambda y: (1.-y*y)
+            elif(activation_2=='relu'):
+                self.activation_g = lambda x: x*(x>0.)
+                self.dactivation_g = lambda y: np.sign(y)
+            else:
+                print("Activation function not defined")
+        
         #weights and biases
         self.parameters = OrderedDict()
         if(hidden_units_2==None):
@@ -87,7 +110,7 @@ class rnn:
             h[-1] = np.zeros_like(np.dot(parameters['Wxh'],X[:,0,:]) + parameters['bh'])
             #Calculate loss
             for i in range(num_delays):
-                h[i] = np.tanh( np.dot(parameters['Wxh'],X[:,i,:]) + np.dot(parameters['Whh'],h[i-1]) + parameters['bh'])
+                h[i] = self.activation_h( np.dot(parameters['Wxh'],X[:,i,:]) + np.dot(parameters['Whh'],h[i-1]) + parameters['bh'])
             
             y_pred = np.dot(parameters['Whx'],h[num_delays-1])+parameters['bx']
         else:
@@ -97,9 +120,9 @@ class rnn:
             #Calculate loss
             num_delays=X_train.shape[1]
             for i in range(num_delays-1):
-                g[i] = np.tanh( np.dot(parameters['Wxg'],X[:,i,:]) + np.dot(parameters['Wgg'],g[i-1]) + parameters['bg'])
+                g[i] = self.activation_g( np.dot(parameters['Wxg'],X[:,i,:]) + np.dot(parameters['Wgg'],g[i-1]) + parameters['bg'])
             
-            f = np.tanh( np.dot(parameters['Wxf'],X[:,num_delays-1,:]) + np.dot(parameters['Wgf'],g[num_delays-2]) + parameters['bf'])
+            f = self.activation_f( np.dot(parameters['Wxf'],X[:,num_delays-1,:]) + np.dot(parameters['Wgf'],g[num_delays-2]) + parameters['bf'])
             y_pred = np.dot(parameters['Wfx'],f)+parameters['bx']
             h=(f,g)
         
@@ -132,7 +155,7 @@ class rnn:
             
             dh = np.dot(parameters['Whx'].T, dy) # backprop into h
             for i in reversed(range(num_delays)):
-                dz = (1. - h[i]*h[i]) * dh # backprop through tanh nonlinearity
+                dz = self.dactivation_h(h[i]) * dh # backprop through relu nonlinearity
                 dparameters['Wxh'] += np.dot(dz, X[:,i,:].T)
                 dparameters['Whh'] += np.dot(dz, h[i-1].T)
                 dparameters['bh'] += np.dot(dz, np.ones((dz.shape[1],dparameters['bh'].shape[1])))
@@ -146,13 +169,13 @@ class rnn:
             
             ### TO BE ADAPTED FOR FG BELOW ####
             df = np.dot(parameters['Wfx'].T, dy) # backprop into f
-            dz = (1. - f*f) * df # backprop through tanh nonlinearity
+            dz = self.dactivation_f(f) * df # backprop through relu nonlinearity
             dparameters['Wxf'] += np.dot(dz, X[:,num_delays-1,:].T)
             dparameters['Wgf'] += np.dot(dz, g[num_delays-2].T)
             dparameters['bf'] += np.dot(dz, np.ones((dz.shape[1],dparameters['bf'].shape[1])))
             dg = np.dot(parameters['Wgf'].T, dz)
             for i in reversed(range(num_delays-1)):
-                dz = (1. - g[i]*g[i]) * dg # backprop through tanh nonlinearity
+                dz = self.dactivation_g(g[i]) * dg # backprop through relu nonlinearity
                 dparameters['Wxg'] += np.dot(dz, X[:,i,:].T)
                 dparameters['Wgg'] += np.dot(dz, g[i-1].T)
                 dparameters['bg'] += np.dot(dz, np.ones((dz.shape[1],dparameters['bg'].shape[1])))
@@ -188,14 +211,18 @@ class rnn:
 
         return difference,numerical_grad,grad
     
-    def train(self,X_train,y_train,initial_theta,train_validation_split=0.7,epochs=10000,stateful=False):
+    def train(self,X_train,y_train,initial_theta,train_validation_split=0.7,epochs=10000,restore_best_theta=True,stateful=False):
         split_point=int(np.round(train_validation_split*X_train.shape[2]))
         X = X_train[:,:,:split_point]
         y = y_train[:,:split_point]
         X_val = X_train[:,:,split_point:]
         y_val = y_train[:,split_point:]
+        if(X_val.shape[2]<10):
+            restore_best_theta=False
+            print("restore_best_theta has been set to false as validation set has less than ten data points")
         
         theta=np.array(initial_theta)
+        best_loss_val=1.e100
         Eg2 = np.copy(theta*0)
         loss_vector=[]
         loss_val_vector=[]
@@ -207,6 +234,14 @@ class rnn:
             
             loss_vector.append(loss)
             loss_val_vector.append(loss_val)
+            if(restore_best_theta):
+                if(loss_val<best_loss_val):
+                    best_loss_val=loss_val
+                    self.parameters = OrderedDict(zip(self.parameters.keys(),theta))
+                
+            else:
+                self.parameters = OrderedDict(zip(self.parameters.keys(),theta)) 
+            
             if i==0:
                 Eg2 = np.power(grad,2)
             else:
@@ -221,7 +256,6 @@ class rnn:
                 #print("Delta_theta: ",np.hstack(delta_theta[0]),np.hstack(delta_theta[1]),np.hstack(delta_theta[2]),np.hstack(delta_theta[3]),np.hstack(delta_theta[4]))
                 #self.print_dashed_line()
         
-        self.parameters = OrderedDict(zip(self.parameters.keys(),theta)) 
         return loss_vector, loss_val_vector
     
     def predict(self,X,stateful=False):
